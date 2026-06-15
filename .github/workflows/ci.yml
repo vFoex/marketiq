@@ -10,14 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.12'
-          enable-cache: 'true'
+          enable-cache: true
+
       - name: Install dependencies
         run: |
           uv sync --frozen
-      - name: Run the gate
-        run: |
-          uv gate
+
+      - name: Lint, format & type-check (pre-commit)
+        run: uv run pre-commit run --all-files
+
+      - name: Tests
+        run: uv run pytest

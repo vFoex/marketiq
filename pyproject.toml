@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "Marketiq is a market with AI project"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pydantic-settings>=2.14.1",
+]
 
 [project.scripts]
 marketiq = "marketiq:main"
@@ -33,6 +35,7 @@ select = ["E", "F", "I", "UP", "SIM", "B"]
 python_version = "3.12"
 strict = true
 files = ["src", "tests"]
+plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

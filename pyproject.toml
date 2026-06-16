@@ -5,7 +5,9 @@ description = "Marketiq is a market with AI project"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "httpx>=0.28.1",
     "pydantic-settings>=2.14.1",
+    "websockets>=16.0",
 ]
 
 [project.scripts]

@@ -25,7 +25,9 @@ dev = [
     "mypy>=2.1.0",
     "pre-commit>=4.6.0",
     "pytest>=9.1.0",
+    "pytest-asyncio>=1.4.0",
     "ruff>=0.15.17",
+    "testcontainers>=4.14.2",
 ]
 
 [tool.ruff]
@@ -43,5 +45,11 @@ strict = true
 files = ["src", "tests"]
 plugins = ["pydantic.mypy"]
 
+[[tool.mypy.overrides]]
+module = "testcontainers.*"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"

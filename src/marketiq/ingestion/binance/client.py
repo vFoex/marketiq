@@ -1,11 +1,13 @@
-import json
 from collections.abc import AsyncIterator
 
 import httpx
 import websockets
 
 from marketiq.domain.trade import Trade
-from marketiq.ingestion.binance.normalize import normalize_binance_agg_trade
+from marketiq.ingestion.binance.normalize import (
+    _event_to_trade,
+    normalize_binance_agg_trade,
+)
 from marketiq.ingestion.binance.schemas import BinanceAggTrade
 from marketiq.ingestion.exchange import ExchangeClient
 
@@ -21,9 +23,7 @@ class BinanceClient(ExchangeClient):
         async for ws in websockets.connect(url):
             try:
                 async for raw in ws:
-                    event = json.loads(raw)
-                    data = event.get("data", event)
-                    yield normalize_binance_agg_trade(BinanceAggTrade(**data))
+                    yield _event_to_trade(raw)
             except websockets.ConnectionClosed:
                 continue
 

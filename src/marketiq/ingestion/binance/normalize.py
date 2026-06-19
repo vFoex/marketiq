@@ -1,3 +1,4 @@
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
@@ -21,3 +22,9 @@ def normalize_binance_agg_trade(aggregate_trade: BinanceAggTrade) -> Trade:
         + timedelta(milliseconds=aggregate_trade.T),
         is_buyer_maker=aggregate_trade.m,
     )
+
+
+def _event_to_trade(raw: str | bytes) -> Trade:
+    event = json.loads(raw)
+    data = event.get("data", event)  # unwrap combined-stream envelope; bare event too
+    return normalize_binance_agg_trade(BinanceAggTrade(**data))

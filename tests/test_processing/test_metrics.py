@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from marketiq.domain.trade import Trade
-from marketiq.processing.metrics import OHLCV, ohlcv, vwap
+from marketiq.processing.metrics import OHLCV, ohlcv, volume, vwap
 
 
 def _trade(price: str, quantity: str, *, seconds: int = 0) -> Trade:
@@ -75,3 +75,22 @@ def test_ohlcv_empty() -> None:
     result = ohlcv([])
 
     assert result is None
+
+
+def test_volume_sums_quantities() -> None:
+    trades = [_trade("100.0", "2.0"), _trade("101.0", "3.0")]
+    assert volume(trades) == Decimal("5.0")
+
+
+def test_volume_precision() -> None:
+    # Decimal must sum sub-unit quantities a float would round away.
+    trades = [
+        _trade("100.0", "0.000000010000000001"),
+        _trade("100.0", "0.000000010000000002"),
+    ]
+    assert volume(trades) == Decimal("0.000000020000000003")
+
+
+def test_volume_empty_is_zero() -> None:
+    # Contrast with vwap: volume of no trades is a real answer (0), not undefined.
+    assert volume([]) == Decimal("0")

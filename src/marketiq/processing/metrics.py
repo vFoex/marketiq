@@ -14,9 +14,14 @@ class OHLCV(BaseModel):
     volume: Decimal
 
 
+def volume(trades: list[Trade]) -> Decimal:
+    """Total quantity traded across the given trades (0 when there are none)."""
+    return sum((trade.quantity for trade in trades), Decimal("0"))
+
+
 def vwap(trades: list[Trade]) -> Decimal | None:
     """Calculate the Volume Weighted Average Price for a batch of trades."""
-    total_volume = sum(trade.quantity for trade in trades)
+    total_volume = volume(trades)
     if total_volume == 0:
         return None
     return sum(trade.price * trade.quantity for trade in trades) / total_volume
@@ -30,11 +35,10 @@ def ohlcv(trades: list[Trade]) -> OHLCV | None:
     close_price = max(trades, key=lambda t: t.timestamp).price
     high_price = max(trade.price for trade in trades)
     low_price = min(trade.price for trade in trades)
-    total_volume = sum(trade.quantity for trade in trades)
     return OHLCV(
         open=open_price,
         high=high_price,
         low=low_price,
         close=close_price,
-        volume=total_volume,
+        volume=volume(trades),
     )

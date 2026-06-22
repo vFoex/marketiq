@@ -42,3 +42,20 @@ def ohlcv(trades: list[Trade]) -> OHLCV | None:
         close=close_price,
         volume=volume(trades),
     )
+
+
+def realized_volatility(trades: list[Trade]) -> Decimal | None:
+    """Realized volatility: sqrt of the summed squared log returns.
+
+    Uses the realized-variance definition (zero-mean assumption, standard for
+    high-frequency data) — no de-meaning, no annualization. Stays in Decimal via
+    Decimal.ln()/.sqrt(), deterministic to the active context precision.
+    """
+    if len(trades) < 2:
+        return None
+    ordered = sorted(trades, key=lambda t: (t.timestamp, t.id))
+    log_returns = [
+        (ordered[i].price / ordered[i - 1].price).ln() for i in range(1, len(ordered))
+    ]
+    realized_variance = sum((r**2 for r in log_returns), Decimal("0"))
+    return realized_variance.sqrt()

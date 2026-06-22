@@ -1,8 +1,11 @@
 from datetime import UTC, datetime
 from decimal import Decimal
+from math import log, sqrt
+
+import pytest
 
 from marketiq.domain.trade import Trade
-from marketiq.processing.metrics import OHLCV, ohlcv, volume, vwap
+from marketiq.processing.metrics import OHLCV, ohlcv, realized_volatility, volume, vwap
 
 
 def _trade(price: str, quantity: str, *, seconds: int = 0) -> Trade:
@@ -94,3 +97,47 @@ def test_volume_precision() -> None:
 def test_volume_empty_is_zero() -> None:
     # Contrast with vwap: volume of no trades is a real answer (0), not undefined.
     assert volume([]) == Decimal("0")
+
+
+def test_realized_volatility_constant_price_is_zero() -> None:
+    # Every log return is ln(1) = 0, so Σr² = 0 → vol = 0.
+    trades = [
+        _trade("100.0", "1.0", seconds=1),
+        _trade("100.0", "1.0", seconds=2),
+        _trade("100.0", "1.0", seconds=3),
+    ]
+    assert realized_volatility(trades) == Decimal("0")
+
+
+def test_realized_volatility_known_value() -> None:
+    # 100→110→121: two equal returns of ln(1.1) → sqrt(2·ln(1.1)²) = √2·ln(1.1).
+    trades = [
+        _trade("100.0", "1.0", seconds=1),
+        _trade("110.0", "1.0", seconds=2),
+        _trade("121.0", "1.0", seconds=3),
+    ]
+    result = realized_volatility(trades)
+    assert result is not None
+    # Independent oracle via float math, compared with approx (float vs Decimal).
+    assert float(result) == pytest.approx(sqrt(2) * log(1.1))
+
+
+def test_realized_volatility_sorts_by_time() -> None:
+    # List order ≠ time order, and not a mere reversal: without the internal sort
+    # the list-adjacent pairs would be non-time-adjacent and the result would differ.
+    ordered = [
+        _trade("100.0", "1.0", seconds=1),
+        _trade("110.0", "1.0", seconds=2),
+        _trade("121.0", "1.0", seconds=3),
+    ]
+    scrambled = [
+        _trade("110.0", "1.0", seconds=2),
+        _trade("121.0", "1.0", seconds=3),
+        _trade("100.0", "1.0", seconds=1),
+    ]
+    assert realized_volatility(scrambled) == realized_volatility(ordered)
+
+
+def test_realized_volatility_insufficient_data_is_none() -> None:
+    assert realized_volatility([]) is None
+    assert realized_volatility([_trade("100.0", "1.0")]) is None

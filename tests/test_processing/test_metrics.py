@@ -2,16 +2,16 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from marketiq.domain.trade import Trade
-from marketiq.processing.metrics import vwap
+from marketiq.processing.metrics import OHLCV, ohlcv, vwap
 
 
-def _trade(price: str, quantity: str) -> Trade:
+def _trade(price: str, quantity: str, *, seconds: int = 0) -> Trade:
     return Trade(
         id=1,
         symbol="BTCUSDT",
         price=Decimal(price),
         quantity=Decimal(quantity),
-        timestamp=datetime(2026, 1, 1, tzinfo=UTC),
+        timestamp=datetime(2026, 1, 1, 12, 0, seconds, tzinfo=UTC),
         is_buyer_maker=True,
     )
 
@@ -53,3 +53,25 @@ def test_vwap_precision() -> None:
     result = vwap(trades)
 
     assert result == Decimal("100.600000010000000001")
+
+
+def test_ohlcv() -> None:
+    trades = [
+        _trade("99.0", "1.0", seconds=3),  # position 0, LATEST in time
+        _trade("100.0", "2.0", seconds=1),  # position 1, EARLIEST in time
+        _trade("101.0", "3.0", seconds=2),  # position 2
+    ]
+    result = ohlcv(trades)
+    assert result == OHLCV(
+        open=Decimal("100.0"),  # earliest time — and now ≠ trades[0] (99.0)
+        high=Decimal("101.0"),
+        low=Decimal("99.0"),
+        close=Decimal("99.0"),  # latest time — and now ≠ trades[-1] (101.0)
+        volume=Decimal("6.0"),
+    )
+
+
+def test_ohlcv_empty() -> None:
+    result = ohlcv([])
+
+    assert result is None

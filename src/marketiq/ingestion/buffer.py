@@ -8,33 +8,50 @@ from marketiq.storage.database import session_scope
 from marketiq.storage.repository import insert_trades
 
 
+async def _next_trade(it: AsyncIterator[Trade]) -> Trade:
+    """Pull one trade as a coroutine we can schedule as a long-lived Task."""
+    return await anext(it)
+
+
 async def batch_trades(
     trades: AsyncIterator[Trade], batch_size: int, flush_interval: float
 ) -> AsyncIterator[list[Trade]]:
     it = aiter(trades)
     batch: list[Trade] = []
     deadline = time.monotonic() + flush_interval
+    # One outstanding pull, kept alive across flush cycles. We wait on it with a
+    # timeout instead of wrapping anext() in wait_for — wait_for would CANCEL the
+    # pull on timeout, tearing down the source stream. asyncio.wait does not.
+    pending = asyncio.create_task(_next_trade(it))
 
-    while True:
-        timeout = deadline - time.monotonic()
-        try:
-            trade = await asyncio.wait_for(anext(it), timeout)
-        except TimeoutError:
-            if batch:
+    try:
+        while True:
+            timeout = max(deadline - time.monotonic(), 0)
+            done, _ = await asyncio.wait({pending}, timeout=timeout)
+
+            if pending not in done:
+                # Time's up: flush the partial batch, but leave the pull running.
+                if batch:
+                    yield batch
+                    batch = []
+                deadline = time.monotonic() + flush_interval
+                continue
+
+            try:
+                trade = pending.result()
+            except StopAsyncIteration:
+                if batch:
+                    yield batch
+                return
+
+            batch.append(trade)
+            pending = asyncio.create_task(_next_trade(it))
+            if len(batch) >= batch_size:
                 yield batch
                 batch = []
-            deadline = time.monotonic() + flush_interval
-            continue
-        except StopAsyncIteration:
-            if batch:
-                yield batch
-            return
-
-        batch.append(trade)
-        if len(batch) >= batch_size:
-            yield batch
-            batch = []
-            deadline = time.monotonic() + flush_interval
+                deadline = time.monotonic() + flush_interval
+    finally:
+        pending.cancel()
 
 
 async def run_ingestion(

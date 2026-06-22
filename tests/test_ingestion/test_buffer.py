@@ -48,16 +48,20 @@ async def test_exact_fill_leaves_no_empty_tail() -> None:
     assert [len(batch) for batch in batches] == [2, 2]
 
 
-async def test_flushes_partial_batch_on_time() -> None:
-    # One trade, then the stream idles past flush_interval → it flushes alone,
-    # without waiting to fill a full batch. Assert the batch *shape* (a single
-    # 1-element batch), not wall-clock timing.
+async def test_time_flush_keeps_stream_alive() -> None:
+    # trade 0 arrives, then the stream idles past flush_interval → trade 0 is
+    # flushed alone on the timeout. Crucially the stream must SURVIVE that flush
+    # and still deliver trade 1 as a second batch — the old wait_for(anext) code
+    # cancelled the in-flight pull on timeout and killed the stream here.
     async def slow_stream() -> AsyncIterator[Trade]:
         yield _trade(0)
         await asyncio.sleep(0.05)  # longer than flush_interval below
         yield _trade(1)
 
-    # batch_size=10 guarantees only the timeout — not a full batch — produced this.
-    first = await anext(batch_trades(slow_stream(), batch_size=10, flush_interval=0.01))
+    # batch_size=10 guarantees only the timeout — not a full batch — flushed each.
+    agen = batch_trades(slow_stream(), batch_size=10, flush_interval=0.01)
+    first = await anext(agen)  # flushed by the timeout
+    second = await anext(agen)  # only arrives if the stream outlived the timeout
 
-    assert len(first) == 1
+    assert [t.id for t in first] == [0]
+    assert [t.id for t in second] == [1]

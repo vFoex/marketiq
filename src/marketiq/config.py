@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     symbols: list[str] = ["BTCUSDT"]
     batch_size: int = 100
     flush_interval_seconds: float = 1.0
+    metrics_window_seconds: int = 60
+    metrics_interval_seconds: float = 5
 
 
 @lru_cache

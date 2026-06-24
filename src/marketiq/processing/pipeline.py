@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +21,8 @@ from marketiq.processing.metrics import (
 from marketiq.storage.database import session_scope
 from marketiq.storage.repository import get_trades_since, insert_anomaly, insert_metric
 
+logger = logging.getLogger(__name__)
+
 
 def process_window(
     symbol: str, trades: list[Trade], window_seconds: int, computed_at: datetime
@@ -40,6 +43,13 @@ async def process_once(
     since = now - timedelta(seconds=window_seconds)
     trades = await get_trades_since(session, symbol, since)
     snapshot, events = process_window(symbol, trades, window_seconds, now)
+    logger.info(
+        "process_once symbol=%s trades=%d snapshot=%s events=%d",
+        symbol,
+        len(trades),
+        snapshot is not None,
+        len(events),
+    )
     if snapshot is not None:
         await insert_metric(session, snapshot)
     for event in events:

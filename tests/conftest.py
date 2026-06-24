@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from testcontainers.postgres import PostgresContainer
 
-from marketiq.storage import models  # noqa: F401 — registers TradeRow on Base.metadata
+from marketiq.storage import models  # noqa: F401 — registers the rows on Base.metadata
 from marketiq.storage.database import Base
 
 # psycopg async needs a SelectorEventLoop on Windows (not the default Proactor).

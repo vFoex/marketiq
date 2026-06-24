@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
@@ -16,6 +17,13 @@ class Anomaly(BaseModel):
     std_dev: Decimal
     z_score: Decimal | None  # how many σ out; None when the baseline is flat
     reason: str
+
+
+class AnomalyEvent(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    symbol: str
+    detected_at: datetime
+    anomaly: Anomaly
 
 
 def _zscore_spike(

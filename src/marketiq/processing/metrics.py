@@ -1,3 +1,4 @@
+from datetime import datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
@@ -12,6 +13,17 @@ class OHLCV(BaseModel):
     low: Decimal
     close: Decimal
     volume: Decimal
+
+
+class MetricSnapshot(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    symbol: str
+    computed_at: datetime
+    window_seconds: int
+    vwap: Decimal | None
+    volume: Decimal
+    volatility: Decimal | None
+    ohlcv: OHLCV | None
 
 
 def volume(trades: list[Trade]) -> Decimal:

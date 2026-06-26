@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     flush_interval_seconds: float = 1.0
     metrics_window_seconds: int = 60
     metrics_interval_seconds: float = 5
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
 
 
 @lru_cache
